@@ -9,6 +9,7 @@ const transactionsRouter = Router();
 
 transactionsRouter.get('/', async (request, response) => {
   // TODO
+  return response.json({ verb: 'get' });
 });
 
 transactionsRouter.post('/', async (request, response) => {
@@ -28,10 +29,12 @@ transactionsRouter.post('/', async (request, response) => {
 
 transactionsRouter.delete('/:id', async (request, response) => {
   // TODO
+  return response.json({ verb: 'delete' });
 });
 
 transactionsRouter.post('/import', async (request, response) => {
   // TODO
+  return response.json({ verb: 'post' });
 });
 
 export default transactionsRouter;
