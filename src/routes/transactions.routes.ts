@@ -1,9 +1,9 @@
+/* eslint-disable no-useless-concat */
 import { Router } from 'express';
 
-// import TransactionsRepository from '../repositories/TransactionsRepository';
 import ListTransactionService from '../services/ListTransactionService';
 import CreateTransactionService from '../services/CreateTransactionService';
-// import DeleteTransactionService from '../services/DeleteTransactionService';
+import DeleteTransactionService from '../services/DeleteTransactionService';
 // import ImportTransactionsService from '../services/ImportTransactionsService';
 
 const transactionsRouter = Router();
@@ -31,8 +31,12 @@ transactionsRouter.post('/', async (request, response) => {
 });
 
 transactionsRouter.delete('/:id', async (request, response) => {
-  // TODO
-  return response.json({ verb: 'delete' });
+  const { id } = request.params;
+
+  const createTransactionService = new DeleteTransactionService();
+  await createTransactionService.execute(id);
+
+  return response.json({ message: 'ok' });
 });
 
 transactionsRouter.post('/import', async (request, response) => {
