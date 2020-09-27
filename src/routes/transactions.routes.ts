@@ -1,12 +1,15 @@
 /* eslint-disable no-useless-concat */
 import { Router } from 'express';
+import multer from 'multer';
+import uploadConfig from '../config/upload';
 
 import ListTransactionService from '../services/ListTransactionService';
 import CreateTransactionService from '../services/CreateTransactionService';
 import DeleteTransactionService from '../services/DeleteTransactionService';
-// import ImportTransactionsService from '../services/ImportTransactionsService';
+import ImportTransactionsService from '../services/ImportTransactionsService';
 
 const transactionsRouter = Router();
+const upload = multer(uploadConfig);
 
 transactionsRouter.get('/', async (request, response) => {
   const listTransactionService = new ListTransactionService();
@@ -39,9 +42,17 @@ transactionsRouter.delete('/:id', async (request, response) => {
   return response.json({ message: 'ok' });
 });
 
-transactionsRouter.post('/import', async (request, response) => {
-  // TODO
-  return response.json({ verb: 'post' });
-});
+transactionsRouter.post(
+  '/import',
+  upload.single('transactions'),
+  async (request, response) => {
+    const importTransactionsService = new ImportTransactionsService();
+    const transactions = await importTransactionsService.execute(
+      request.file.filename,
+    );
+
+    return response.json(transactions);
+  },
+);
 
 export default transactionsRouter;
