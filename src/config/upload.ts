@@ -6,13 +6,6 @@ import fs from 'fs';
 
 const tmpFolder = path.resolve(__dirname, '..', '..', 'tmp');
 
-interface ResponseFileDTO {
-  title: string;
-  value: number;
-  type: 'income' | 'outcome';
-  category: string;
-}
-
 export default {
   directory: tmpFolder,
 
@@ -25,7 +18,7 @@ export default {
     },
   }),
 
-  loadCsv: async (fileName: string): Promise<ResponseFileDTO[]> => {
+  loadCsv: async (fileName: string): Promise<any[]> => {
     const csvFilePath = path.resolve(tmpFolder, fileName);
 
     const readCSVStream = fs.createReadStream(csvFilePath);
@@ -38,7 +31,7 @@ export default {
 
     const parseCSV = readCSVStream.pipe(parseStream);
 
-    const lines: ResponseFileDTO[] = [];
+    const lines = [];
 
     parseCSV.on('data', line => {
       lines.push(line);

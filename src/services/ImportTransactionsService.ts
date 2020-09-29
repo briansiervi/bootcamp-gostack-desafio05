@@ -1,10 +1,11 @@
+/* eslint-disable no-unused-expressions */
 import { getCustomRepository } from 'typeorm';
 import Transaction from '../models/Transaction';
 import TransactionsRepository from '../repositories/TransactionsRepository';
 import CategorysRepository from '../repositories/CategorysRepository';
 import upload from '../config/upload';
 
-interface RequestDTO {
+interface ResponseDTO {
   title: string;
   value: number;
   type: 'income' | 'outcome';
@@ -12,39 +13,34 @@ interface RequestDTO {
 }
 
 class ImportTransactionsService {
-  async execute(filename: string): Promise<Transaction[]> {
+  async execute(filename: string): Promise<ResponseDTO[]> {
     const data = await upload.loadCsv(filename);
+    const transactions: ResponseDTO[] = [];
 
-    const transactionsRepository = getCustomRepository(TransactionsRepository);
-    data.map(t => {
-      console.log(t);
-      console.log(t.title);
-      console.log(t.value);
-      console.log(t.type);
-      console.log(t.category);
-    });
+    data.map(t => this.save(t[0], t[1], t[2], t[3]));
 
-    // data.map(t => this.save(t));
-
-    // return data;
-
-    // const transactionsRepository = getCustomRepository(TransactionsRepository);
-    const transactions = transactionsRepository.find();
+    data.map(transaction =>
+      transactions.push({
+        title: transaction.title,
+        value: transaction.value,
+        type: transaction.type,
+        category: transaction.category.title,
+      }),
+    );
 
     return transactions;
+
+    // const transactionsRepository = getCustomRepository(TransactionsRepository);
+    // const transactions = transactionsRepository.find();
+    // return transactions;
   }
 
-  public async save({
-    title,
-    value,
-    type,
-    category,
-  }: RequestDTO): Promise<Transaction> {
-    // console.log(title);
-    // console.log(value);
-    // console.log(type);
-    // console.log(category);
-
+  public async save(
+    title: string,
+    value: number,
+    type: 'income' | 'outcome',
+    category: string,
+  ): Promise<Transaction> {
     const categorysRepository = getCustomRepository(CategorysRepository);
     const categoryFinded = await categorysRepository.findByTitle(category).then(
       x =>
