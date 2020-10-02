@@ -13,32 +13,37 @@ interface ResponseDTO {
 }
 
 class ImportTransactionsService {
-  async execute(filename: string): Promise<ResponseDTO[]> {
+  async execute(filename: string): Promise<Transaction[]> {
     const data = await upload.loadCsv(filename);
-    const transactions: ResponseDTO[] = [];
 
-    data.map(t => this.save(t[0], t[1], t[2], t[3]));
+    const transactions = data.map(transaction => ({
+      title: transaction[0],
+      type: transaction[1],
+      value: transaction[2],
+      category: transaction[3],
+    }));
 
-    data.map(transaction =>
-      transactions.push({
-        title: transaction.title,
-        value: transaction.value,
-        type: transaction.type,
-        category: transaction.category.title,
+    const savedTransactions = transactions.map(t =>
+      this.save(t.title, t.type, t.value, t.category),
+    );
+
+    const transactionsRepository = getCustomRepository(TransactionsRepository);
+
+    const result = Promise.all(savedTransactions).then(trans =>
+      transactionsRepository.find({
+        where: {
+          trans,
+        },
       }),
     );
 
-    return transactions;
-
-    // const transactionsRepository = getCustomRepository(TransactionsRepository);
-    // const transactions = transactionsRepository.find();
-    // return transactions;
+    return result;
   }
 
   public async save(
     title: string,
-    value: number,
     type: 'income' | 'outcome',
+    value: number,
     category: string,
   ): Promise<Transaction> {
     const categorysRepository = getCustomRepository(CategorysRepository);
@@ -63,37 +68,6 @@ class ImportTransactionsService {
 
     return transaction;
   }
-
-  // public saveAll(transactions: RequestDTO[]): Transaction[] {
-  //   const response = [] as Transaction[];
-
-  //   transactions.map(t => {
-  //     const categorysRepository = getCustomRepository(CategorysRepository);
-  //     const categoryFinded = await categorysRepository
-  //       .findByTitle(t.category)
-  //       .then(
-  //         x =>
-  //           x ||
-  //           categorysRepository.save(
-  //             categorysRepository.create({
-  //               title: t.category,
-  //             }),
-  //           ),
-  //       );
-
-  //     const transactionsRepository = getCustomRepository(
-  //       TransactionsRepository,
-  //     );
-  //     const transaction = transactionsRepository.create({
-  //       title: t.title,
-  //       value: t.value,
-  //       type: t.type,
-  //       category_id: categoryFinded.id,
-  //     });
-
-  //     return transactionsRepository.save(transaction);
-  //   });
-  // }
 }
 
 export default ImportTransactionsService;
