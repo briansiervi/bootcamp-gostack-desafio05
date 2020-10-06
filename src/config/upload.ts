@@ -6,9 +6,20 @@ import fs from 'fs';
 
 const tmpFolder = path.resolve(__dirname, '..', '..', 'tmp');
 
+interface CsvDTO {
+  transactions: TransactionDTO[];
+  categories: string[];
+}
+
+interface TransactionDTO {
+  title: string;
+  type: 'income' | 'outcome';
+  value: number;
+  category: string;
+}
+
 export default {
   directory: tmpFolder,
-
   storage: multer.diskStorage({
     destination: tmpFolder,
     filename(request, file, callback) {
@@ -17,12 +28,9 @@ export default {
       return callback(null, fileName);
     },
   }),
-
-  loadCsv: async (fileName: string): Promise<any[]> => {
+  loadCsv: async (fileName: string): Promise<CsvDTO> => {
     const csvFilePath = path.resolve(tmpFolder, fileName);
-
     const readCSVStream = fs.createReadStream(csvFilePath);
-
     const parseStream = csvParse({
       from_line: 2,
       ltrim: true,
@@ -30,17 +38,28 @@ export default {
     });
 
     const parseCSV = readCSVStream.pipe(parseStream);
+    const transactions: TransactionDTO[] = [];
 
-    const lines = [];
+    const categories: string[] = [];
 
-    parseCSV.on('data', line => {
-      lines.push(line);
+    parseCSV.on('data', async line => {
+      const [title, type, value, category] = line.map((cell: string) =>
+        cell.trim(),
+      );
+
+      if (!title || !type || !value) return;
+
+      categories.push(category);
+      transactions.push({ title, type, value, category });
     });
 
     await new Promise(resolve => {
       parseCSV.on('end', resolve);
     });
 
-    return lines;
+    return {
+      transactions,
+      categories,
+    };
   },
 };

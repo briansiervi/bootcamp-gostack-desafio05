@@ -1,72 +1,84 @@
-/* eslint-disable no-unused-expressions */
-import { getCustomRepository } from 'typeorm';
-import Transaction from '../models/Transaction';
-import TransactionsRepository from '../repositories/TransactionsRepository';
-import CategorysRepository from '../repositories/CategorysRepository';
+// /* eslint-disable no-unused-expressions */
+import { getCustomRepository, In } from 'typeorm';
 import upload from '../config/upload';
+import Category from '../models/Category';
+import CategoriesRepository from '../repositories/CategoriesRepository';
+import TransactionsRepository from '../repositories/TransactionsRepository';
 
-interface ResponseDTO {
+interface CsvDTO {
+  transactions: TransactionDTO[];
+  categories: string[];
+}
+
+interface TransactionDTO {
   title: string;
-  value: number;
   type: 'income' | 'outcome';
+  value: number;
   category: string;
 }
 
+interface ResponseDTO {
+  title: string;
+  type: 'income' | 'outcome';
+  value: number;
+  category: Category;
+}
+
 class ImportTransactionsService {
-  async execute(filename: string): Promise<Transaction[]> {
-    const data = await upload.loadCsv(filename);
+  async import(filename: string): Promise<CsvDTO> {
+    const csvData = await upload.loadCsv(filename);
 
-    const transactions = data.map(transaction => ({
-      title: transaction[0],
-      type: transaction[1],
-      value: transaction[2],
-      category: transaction[3],
-    }));
-
-    const savedTransactions = transactions.map(t =>
-      this.save(t.title, t.type, t.value, t.category),
+    const distinctCsvDataCategories = csvData.categories.filter(
+      (value, index, self) => self.indexOf(value) === index,
     );
 
-    const transactionsRepository = getCustomRepository(TransactionsRepository);
-
-    const result = Promise.all(savedTransactions).then(trans =>
-      transactionsRepository.find({
-        where: {
-          trans,
-        },
-      }),
-    );
-
-    return result;
+    return {
+      transactions: csvData.transactions,
+      categories: distinctCsvDataCategories,
+    };
   }
 
-  public async save(
-    title: string,
-    type: 'income' | 'outcome',
-    value: number,
-    category: string,
-  ): Promise<Transaction> {
-    const categorysRepository = getCustomRepository(CategorysRepository);
-    const categoryFinded = await categorysRepository.findByTitle(category).then(
-      x =>
-        x ||
-        categorysRepository.save(
-          categorysRepository.create({
-            title: category,
-          }),
-        ),
-    );
+  public async save({
+    transactions,
+    categories,
+  }: CsvDTO): Promise<ResponseDTO[]> {
+    const categoriesRepository = getCustomRepository(CategoriesRepository);
+    const categoriesFinded = await categoriesRepository
+      .find({
+        where: {
+          title: In(categories),
+        },
+      })
+      .then(
+        x =>
+          x ||
+          categories.map(categoryName =>
+            categoriesRepository.save(
+              categoriesRepository.create({
+                title: categoryName,
+              }),
+            ),
+          ),
+      );
 
     const transactionsRepository = getCustomRepository(TransactionsRepository);
-    const transaction = transactionsRepository.create({
-      title,
-      value,
-      type,
-      category_id: categoryFinded.id,
-    });
-    await transactionsRepository.save(transaction);
+    const newTransactions = transactionsRepository.save(
+      transactionsRepository.create(
+        transactions.map(transaction => ({
+          title: transaction.title,
+          type: transaction.type,
+          category: categoriesFinded.find(
+            category => category.title === transaction.category,
+          ),
+          category_id: categoriesFinded.find(
+            category => category.title === transaction.category,
+          )?.id,
+          value: transaction.value,
+        })),
+      ),
+    );
 
-    return transaction;
+    return newTransactions;
   }
 }
 
