@@ -43,23 +43,28 @@ class ImportTransactionsService {
     categories,
   }: CsvDTO): Promise<ResponseDTO[]> {
     const categoriesRepository = getCustomRepository(CategoriesRepository);
-    const categoriesFinded = await categoriesRepository
-      .find({
-        where: {
-          title: In(categories),
-        },
-      })
-      .then(
-        x =>
-          x ||
-          categories.map(categoryName =>
-            categoriesRepository.save(
-              categoriesRepository.create({
-                title: categoryName,
-              }),
-            ),
-          ),
-      );
+
+    const existentCategories = await categoriesRepository.find({
+      where: {
+        title: In(categories),
+      },
+    });
+
+    const existentCategoriesTitles = existentCategories.map(
+      (category: Category) => category.title,
+    );
+
+    const nonExistentCategories = categories.filter(
+      category => !existentCategoriesTitles.includes(category),
+    );
+
+    const newCategories = await categoriesRepository.save(
+      categoriesRepository.create(
+        nonExistentCategories.map(categoryName => ({
+          title: categoryName,
+        })),
+      ),
+    );
 
     const transactionsRepository = getCustomRepository(TransactionsRepository);
     const newTransactions = transactionsRepository.save(
@@ -67,10 +72,10 @@ class ImportTransactionsService {
         transactions.map(transaction => ({
           title: transaction.title,
           type: transaction.type,
-          category: categoriesFinded.find(
+          category: newCategories.find(
             category => category.title === transaction.category,
           ),
-          category_id: categoriesFinded.find(
+          category_id: newCategories.find(
             category => category.title === transaction.category,
           )?.id,
           value: transaction.value,
