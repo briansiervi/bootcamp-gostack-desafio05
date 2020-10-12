@@ -1,21 +1,25 @@
 /* eslint-disable no-useless-concat */
 import { Router } from 'express';
 import multer from 'multer';
+import { getCustomRepository } from 'typeorm';
 import uploadConfig from '../config/upload';
 
-import ListTransactionService from '../services/ListTransactionService';
 import CreateTransactionService from '../services/CreateTransactionService';
 import DeleteTransactionService from '../services/DeleteTransactionService';
 import ImportTransactionsService from '../services/ImportTransactionsService';
+
+import TransactionsRepository from '../repositories/TransactionsRepository';
 
 const transactionsRouter = Router();
 const upload = multer(uploadConfig);
 
 transactionsRouter.get('/', async (request, response) => {
-  const listTransactionService = new ListTransactionService();
-  const transaction = await listTransactionService.execute();
+  const transactionsRepository = getCustomRepository(TransactionsRepository);
 
-  return response.json(transaction);
+  const transactions = await transactionsRepository.find();
+  const balance = await transactionsRepository.getBalance();
+
+  return response.json({ transactions, balance });
 });
 
 transactionsRouter.post('/', async (request, response) => {
