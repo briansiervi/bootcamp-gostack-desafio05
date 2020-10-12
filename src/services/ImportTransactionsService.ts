@@ -43,6 +43,8 @@ class ImportTransactionsService {
     categories,
   }: CsvDTO): Promise<ResponseDTO[]> {
     const categoriesRepository = getCustomRepository(CategoriesRepository);
+    const transactionsRepository = getCustomRepository(TransactionsRepository);
+    let newTransactions;
 
     const existentCategories = await categoriesRepository.find({
       where: {
@@ -58,31 +60,47 @@ class ImportTransactionsService {
       category => !existentCategoriesTitles.includes(category),
     );
 
-    const newCategories = await categoriesRepository.save(
-      categoriesRepository.create(
-        nonExistentCategories.map(categoryName => ({
-          title: categoryName,
-        })),
-      ),
-    );
+    if (nonExistentCategories.length > 0) {
+      const newCategories = await categoriesRepository.save(
+        categoriesRepository.create(
+          nonExistentCategories.map(categoryName => ({
+            title: categoryName,
+          })),
+        ),
+      );
 
-    const transactionsRepository = getCustomRepository(TransactionsRepository);
-    const newTransactions = transactionsRepository.save(
-      transactionsRepository.create(
-        transactions.map(transaction => ({
-          title: transaction.title,
-          type: transaction.type,
-          category: newCategories.find(
-            category => category.title === transaction.category,
-          ),
-          category_id: newCategories.find(
-            category => category.title === transaction.category,
-          )?.id,
-          value: transaction.value,
-        })),
-      ),
-    );
-
+      newTransactions = transactionsRepository.save(
+        transactionsRepository.create(
+          transactions.map(transaction => ({
+            title: transaction.title,
+            type: transaction.type,
+            category: newCategories.find(
+              category => category.title === transaction.category,
+            ),
+            category_id: newCategories.find(
+              category => category.title === transaction.category,
+            )?.id,
+            value: transaction.value,
+          })),
+        ),
+      );
+    } else {
+      newTransactions = transactionsRepository.save(
+        transactionsRepository.create(
+          transactions.map(transaction => ({
+            title: transaction.title,
+            type: transaction.type,
+            category: existentCategories.find(
+              category => category.title === transaction.category,
+            ),
+            category_id: existentCategories.find(
+              category => category.title === transaction.category,
+            )?.id,
+            value: transaction.value,
+          })),
+        ),
+      );
+    }
     return newTransactions;
   }
 }
