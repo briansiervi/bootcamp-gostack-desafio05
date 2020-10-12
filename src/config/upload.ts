@@ -57,6 +57,8 @@ export default {
       parseCSV.on('end', resolve);
     });
 
+    await fs.promises.unlink(csvFilePath);
+
     return {
       transactions,
       categories,
