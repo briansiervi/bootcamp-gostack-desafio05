@@ -1,8 +1,7 @@
 // /* eslint-disable no-unused-expressions */
-import { getCustomRepository, In } from 'typeorm';
+import { getCustomRepository, getRepository, In } from 'typeorm';
 import upload from '../config/upload';
 import Category from '../models/Category';
-import CategoriesRepository from '../repositories/CategoriesRepository';
 import TransactionsRepository from '../repositories/TransactionsRepository';
 
 interface CsvDTO {
@@ -42,7 +41,7 @@ class ImportTransactionsService {
     transactions,
     categories,
   }: CsvDTO): Promise<ResponseDTO[]> {
-    const categoriesRepository = getCustomRepository(CategoriesRepository);
+    const categoriesRepository = getRepository(Category);
     const transactionsRepository = getCustomRepository(TransactionsRepository);
 
     const existentCategories = await categoriesRepository.find({
@@ -59,31 +58,28 @@ class ImportTransactionsService {
       .filter(category => !existentCategoriesTitles.includes(category))
       .filter((value, index, self) => self.indexOf(value) === index);
 
-    const newCategories = await categoriesRepository.save(
-      categoriesRepository.create(
-        addCategoryTitles.map(categoryName => ({
-          title: categoryName,
-        })),
-      ),
+    const newCategories = categoriesRepository.create(
+      addCategoryTitles.map(categoryName => ({
+        title: categoryName,
+      })),
     );
+
+    await categoriesRepository.save(newCategories);
 
     const finalCategories = [...newCategories, ...existentCategories];
 
-    const createdTransactions = await transactionsRepository.save(
-      transactionsRepository.create(
-        transactions.map(transaction => ({
-          title: transaction.title,
-          type: transaction.type,
-          value: transaction.value,
-          category: finalCategories.find(
-            category => category.title === transaction.category,
-          ),
-          category_id: finalCategories.find(
-            category => category.title === transaction.category,
-          )?.id,
-        })),
-      ),
+    const createdTransactions = transactionsRepository.create(
+      transactions.map(transaction => ({
+        title: transaction.title,
+        type: transaction.type,
+        value: transaction.value,
+        category: finalCategories.find(
+          category => category.title === transaction.category,
+        ),
+      })),
     );
+
+    await transactionsRepository.save(createdTransactions);
 
     return createdTransactions;
   }
